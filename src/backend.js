@@ -10,10 +10,10 @@ app.use(cors())
 
 const { Client } = require('pg')
 const client = new Client({
-  user: "postgres",
-  password: "postgres",
-  host: "localhost",
-  database: "postgres",
+  user: process.env.DBUSER,
+  password: process.env.DBPASSWD,
+  host: process.env.DBHOSTNAME,
+  database: process.env.DBNAME,
   port: 5432
 }) 
 
@@ -21,8 +21,8 @@ const client = new Client({
 app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`)
 
-  await client.connect()
   try{
+    await client.connect()
     const res = await client.query('SELECT $1::text as message', ['Hello world!'])
     console.log(res.rows[0].message) // Hello world!
   }catch(err){
