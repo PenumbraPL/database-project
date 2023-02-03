@@ -5,8 +5,7 @@
   "main": "backend.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "netlify-lambda serve src",
-    "build": "netlify-lambda build src"
+    "start": "node index"
   },
   "author": "",
   "license": "ISC",
