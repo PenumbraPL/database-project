@@ -251,7 +251,7 @@ app.get('/track-package', async (req, res) => {
   }
   
   const r = await client.query(`SELECT * FROM zlaczone_paczki_dla_uzytkownika($1)
-                                FULL JOIN aktualny_stan USING (paczka_id);
+                                LEFT JOIN aktualny_stan USING (paczka_id);
                                 `, [data.uzytkownikId])
 
   const length = r.rowCount
