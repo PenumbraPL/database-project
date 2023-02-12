@@ -3,17 +3,17 @@ var bodyParser = require('body-parser')
 var cors = require('cors')
 
 const app = express()
-const port = process.env.PORT || 3000
+const port = 3001
 var jsonParser = bodyParser.json()
 
 app.use(cors())
 
 const { Client } = require('pg')
 const client = new Client({
-  user: process.env.DBUSER,
-  password: process.env.DBPASSWD,
-  host: process.env.DBHOSTNAME,
-  database: process.env.DBNAME,
+  user: "postgres",
+  password: "postgres",
+  host: "localhost",
+  database: "postgres",
   port: 5432
 }) 
 
@@ -21,8 +21,8 @@ const client = new Client({
 app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`)
 
+  await client.connect()
   try{
-    await client.connect()
     const res = await client.query('SELECT $1::text as message', ['Hello world!'])
     console.log(res.rows[0].message) // Hello world!
   }catch(err){
@@ -279,6 +279,15 @@ app.post('/admin/sign-in', jsonParser, async function (req, res) {
   const user = req.body
   console.log(user)
   const { status, data } = await authenticateEmployee(user.email, user.password)
+
+  console.log(data)
+  res.status(status).json(data)
+})
+
+app.post('/admin/admin-sign-in', jsonParser, async function (req, res) {
+  const user = req.body
+  console.log(user)
+  const { status, data } = await authenticateAdmin(user.email, user.password)
 
   console.log(data)
   res.status(status).json(data)
@@ -557,4 +566,359 @@ app.post('/admin/register-transport-packages', jsonParser, async function (req, 
     return res.status(400).json(err.message)
   }
   res.status(status).json(data)
+})
+
+app.get('/admin-track-package', async (req, res) => {
+  let {status, data} = await authenticateAdminFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+ 
+  const result = []
+
+  try{
+  const r = await client.query(`select * from zlaczone_paczki;`)
+
+  const length = r.rowCount
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      title: r.rows[i].tytul,
+      description: r.rows[i].opis,
+      mass: r.rows[i].waga,
+      status: r.rows[i].status === null ? "Zarejestrowano" : r.rows[i].status,
+      last_date_of_update: r.rows[i].czas === null ? "" : r.rows[i].czas,
+      sender: r.rows[i].nadawca,
+      resever: r.rows[i].odbiorca,
+      destination_point: r.rows[i].punkt_odbioru
+    }
+    result.push(x)
+  }
+}catch(err){
+  console.log(err)
+  res.status(400).json({ message: err.message })
+  return
+}
+res.json(result)
+})
+
+app.get('/admin-users', async (req, res) => {
+  let {status, data} = await authenticateAdminFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+ 
+  const result = []
+
+  try{
+  const r = await client.query(`select * from uzytkownik order by uzytkownik_id;`)
+
+  const length = r.rowCount
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      id: r.rows[i].uzytkownik_id,
+      forname: r.rows[i].imie,
+      surname: r.rows[i].nazwisko,
+      date_of_birth: r.rows[i].data_urodzenia,
+      postal_code: r.rows[i].kod_pocztowy,
+      phone_number: r.rows[i].numer_telefonu,
+      email: r.rows[i].email,
+      password: r.rows[i].haslo
+    }
+    result.push(x)
+  }
+}catch(err){
+  console.log(err)
+  res.status(400).json({ message: err.message })
+  return
+}
+res.json(result)
+})
+
+app.get('/admin-vehicles', async (req, res) => {
+  let {status, data} = await authenticateAdminFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+ 
+  const result = []
+
+  try{
+  const r = await client.query(`select * from pojazd order by pojazd_id;`)
+
+  const length = r.rowCount
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      id: r.rows[i].pojazd_id,
+      localization: r.rows[i].lokalizacja,
+      brand: r.rows[i].marka,
+      model: r.rows[i].model,
+      number_plate: r.rows[i].rejestracja,
+      max_mass: r.rows[i].udzwig,
+    }
+    result.push(x)
+  }
+}catch(err){
+  console.log(err)
+  res.status(400).json({ message: err.message })
+  return
+}
+res.json(result)
+})
+
+app.get('/admin-package', async (req, res) => {
+  let {status, data} = await authenticateAdminFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+ 
+  const result = []
+
+  try{
+  const r = await client.query(`select * from paczka order by paczka_id;`)
+
+  const length = r.rowCount
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      id: r.rows[i].paczka_id,
+      title: r.rows[i].tytul,
+      description: r.rows[i].opis,
+      mass: r.rows[i].waga,
+      sender: r.rows[i].nadawca,
+      resever: r.rows[i].odbiorca,
+      source_point: r.rows[i].punkt_nadania,
+      destination_point: r.rows[i].punkt_odbioru
+    }
+    result.push(x)
+  }
+}catch(err){
+  console.log(err)
+  res.status(400).json({ message: err.message })
+  return
+}
+res.json(result)
+})
+
+app.get('/admin/admin-package-status', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  const r = await client.query(` SELECT DISTINCT u1.imie || \' \' || u1.nazwisko as nadawca, u2.imie || \' \' || u2.nazwisko as odbiorca,
+                               status, czas as aktualizacja, waga, transport_id, paczka_id, paczki_transportu_id
+                                FROM aktualny_stan
+                                FULL JOIN public.paczka  USING(paczka_id)
+                                JOIN uzytkownik u1 ON u1.uzytkownik_id = nadawca
+                                JOIN uzytkownik u2 ON u2.uzytkownik_id = odbiorca
+                                ORDER BY paczka_id;
+                              `)
+  const length = r.rowCount
+  const result = []
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      sender: r.rows[i].nadawca,
+      resever: r.rows[i].odbiorca,
+      status: r.rows[i].status,
+      date: r.rows[i].aktualizacja,
+      mass: r.rows[i].waga,
+      transport: r.rows[i].transport_id,
+      package_id: r.rows[i].paczka_id,
+      package_of_transport_id: r.rows[i].paczki_transportu_id
+    }
+    result.push(x)
+  }
+  console.log(result)
+  res.status(status).json(result)
+})
+
+app.get('/admin/admin-vehicles', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  let result
+  try{
+    result = await client.query(`SELECT pojazd_id, marka, model, rejestracja
+                                FROM public.pojazd 
+                                `)
+  }catch(err){
+    console.log(err)
+    res.status(400).json({ message: err.message })
+    return
+  }
+  res.json(result.rows)
+})
+
+app.get('/admin/admin-workers', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  let result
+  try{
+    result = await client.query(`SELECT pracownik_id, imie, nazwisko, admin, punkt_pocztowy, email, haslo
+                                FROM public.pracownik 
+                                `)
+  }catch(err){
+    console.log(err)
+    res.status(400).json({ message: err.message })
+    return
+  }
+  res.json(result.rows)
+})
+
+app.get('/admin/admin-transports', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  let result
+  try{
+    result = await client.query(`SELECT transport_id, pojazd, punkt_nadania, punkt_odbioru
+                                FROM public.transport 
+                                `)
+  }catch(err){
+    console.log(err)
+    res.status(400).json({ message: err.message })
+    return
+  }
+  res.json(result.rows)
+})
+
+app.get('/admin/admin-trans-packages', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  let result
+  try{
+    result = await client.query(`SELECT paczki_transportu_id, transport_id, paczka_id
+                                FROM public.paczki_transportu
+                                `)
+  }catch(err){
+    console.log(err)
+    res.status(400).json({ message: err.message })
+    return
+  }
+  res.json(result.rows)
+})
+
+app.get('/admin/admin-mails', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  let result
+  try{
+    result = await client.query(`SELECT punkt_id, nazwa, miejscowosc
+                                FROM public.punkt_pocztowy
+                                `)
+  }catch(err){
+    console.log(err)
+    res.status(400).json({ message: err.message })
+    return
+  }
+  res.json(result.rows)
+})
+
+
+app.post('/admin/update-package', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+  const pkg = req.body
+  const rows = pkg.rows
+  console.log(rows)
+  if(pkg.status === 'Nadano'){
+    console.log('Nadano')
+
+    try{
+      const r1 = await client.query('INSERT INTO transport (pojazd, punkt_nadania, punkt_odbioru) VALUES ($1, $2, $3) RETURNING *;',
+                                  [pkg.vehicle, pkg.sendMail, pkg.reseveMail])
+      console.log('1')
+      const values = rows.map(r => `(${r1.rows[0].transport_id}, ${r[0]})`).join(',').toString()
+      console.log(values)
+      const r2 = await client.query(`INSERT INTO paczki_transportu (transport_id, paczka_id) VALUES ` + values + ` RETURNING *;`)
+      console.log('2')
+      const pt_id = r2.rows
+      //console.log(pt_id)
+      const sp_values = pt_id.map(r => `(${r.paczki_transportu_id}, \'${pkg.status}\', NOW())`).join(',').toString()
+      const r3 = await client.query(`INSERT INTO status_paczki (paczki_transportu_id, status, czas) VALUES ` + sp_values + `;`)
+      console.log('3')
+      }catch(err){
+        console.log(err)
+        return res.status(400).json(err.message)
+      }
+  }else{
+    console.log(pkg.status)
+
+    try{
+      const values = rows.map(r => `(${r[1]}, \'${pkg.status}\', NOW())`).join(',').toString()
+      console.log('Values' + values)
+      const r1 = await client.query(`INSERT INTO status_paczki (paczki_transportu_id, status, czas) VALUES ` + values)
+      const pt_id = r1.rows
+      console.log(pt_id)
+   }catch(err){
+     console.log(err)
+     return res.status(400).json(err.message)
+   }
+  }
+  res.status(status).json(data)
+})
+
+app.get('/admin/admin-package-delivered', jsonParser, async function (req, res) {
+  const {status, data} = await authenticateEmployeeFromReq(req)
+  
+  if (status !== 200) {
+    return res.status(status).json()
+  }
+
+  const r = await client.query(` SELECT paczka_id, status , czas, zlaczone_paczki.punkt_nadania, zlaczone_paczki.punkt_odbioru, pojazd_id FROM zlaczone_paczki
+                                  JOIN transport t USING(transport_id)
+                                  JOIN pojazd p ON t.pojazd=p.pojazd_id
+                                  WHERE paczka_id = ANY(
+                                    SELECT DISTINCT paczka_id FROM paczka 
+                                    JOIN paczki_transportu USING(paczka_id)
+                                    JOIN status_paczki USING(paczki_transportu_id)
+                                    WHERE status = 'Dostarczono'
+                                  )
+                                  ORDER BY paczka_id, czas DESC;`)
+  const length = r.rowCount
+  const result = []
+  for(let i=0; i<length; i++){
+    let x = 
+    {
+      source_point: r.rows[i].punkt_nadania,
+      destination_point: r.rows[i].punkt_odbioru,
+      status: r.rows[i].status,
+      date: r.rows[i].czas,
+      vehicle_id: r.rows[i].pojazd_id,
+      package_id: r.rows[i].paczka_id
+    }
+    result.push(x)
+  }
+  console.log(result)
+  res.status(status).json(result)
 })
