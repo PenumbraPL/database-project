@@ -458,7 +458,8 @@ app.get('/admin/package-status', jsonParser, async function (req, res) {
                                 FULL JOIN public.paczka  USING(paczka_id)
                                 JOIN uzytkownik u1 ON u1.uzytkownik_id = nadawca
                                 JOIN uzytkownik u2 ON u2.uzytkownik_id = odbiorca
-                                WHERE (punkt_nadania = $1 OR punkt_odbioru = $1) AND status IS NULL;
+                                WHERE ((punkt_nadania = $1) AND status <> 'Dostarczono' AND status <> 'Odebrano')
+                                OR ((punkt_odbioru = $1) AND status = 'W trasie' OR status = 'Nadano');
                               `, [data.poczta])
   const length = r.rowCount
   const result = []
