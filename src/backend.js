@@ -3,17 +3,17 @@ var bodyParser = require('body-parser')
 var cors = require('cors')
 
 const app = express()
-const port = 3001
+const port = process.env.PORT || 3000
 var jsonParser = bodyParser.json()
 
 app.use(cors())
 
 const { Client } = require('pg')
 const client = new Client({
-  user: "postgres",
-  password: "postgres",
-  host: "localhost",
-  database: "postgres",
+  user: process.env.DBUSER,
+  password: process.env.DBPASSWD,
+  host: process.env.DBHOSTNAME,
+  database: process.env.DBNAME,
   port: 5432
 }) 
 
